@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 // Функция для обработки конкатенации строк: запрашивает ввод двух строк (или генерирует их случайно),
 // выполняет конкатенацию и выводит результат
@@ -40,7 +41,7 @@ void handle_concat(String *s1, String *s2, String *result)
     if (strlen(input) == 0)
     {
         generate_random_string(s1, 5, 15); 
-        printf("  Сгенерирована: %s\n", s1->data);
+        printf("  Сгенерирована: %ls\n", s1->data);
     }
     else
         string_from_cstr(s1, input); // Иначе преобразуем в строку структуры
@@ -72,7 +73,7 @@ void handle_concat(String *s1, String *s2, String *result)
     if (strlen(input) == 0)
     {
         generate_random_string(s2, 5, 15);
-        printf("  Сгенерирована: %s\n", s2->data);
+        printf("  Сгенерирована: %ls\n", s2->data);
     }
     else
         string_from_cstr(s2, input);
@@ -81,7 +82,7 @@ void handle_concat(String *s1, String *s2, String *result)
     
     // Совмещаем строки
     string_concat(s1, s2, result);
-    printf("РЕЗУЛЬТАТ: %s\n", result->data);
+    printf("РЕЗУЛЬТАТ: %ls\n", result->data);
 }
 
 // Функция для обработки выделения подстроки: запрашивает исходную строку (или генерирует её),
@@ -115,7 +116,7 @@ void handle_substring(String *s, String *result)
     if (strlen(input) == 0)
     {
         generate_random_string(s, 5, 15);
-        printf("  Сгенерирована: %s\n", s->data);
+        printf("  Сгенерирована: %ls\n", s->data);
     }
     else
         string_from_cstr(s, input);
@@ -144,7 +145,7 @@ void handle_substring(String *s, String *result)
     
     // Извлекаем подстроку
     string_substring(s, i, j, result);
-    printf("Подстрока: %s\n", result->data);
+    printf("Подстрока: %ls\n", result->data);
 }
 
 // Функция для поиска подстроки в основной строке с возможностью выбора чувствительности к регистру
@@ -177,7 +178,7 @@ void handle_find(String *s, String *substr)
     if (strlen(input) == 0)
     {
         generate_random_string(s, 5, 15);
-        printf("  Сгенерирована: %s\n", s->data);
+        printf("  Сгенерирована: %ls\n", s->data);
     }
     else
         string_from_cstr(s, input);
@@ -209,7 +210,7 @@ void handle_find(String *s, String *substr)
     if (strlen(input) == 0)
     {
         generate_random_string(substr, 3, 10);
-        printf("  Сгенерирована: %s\n", substr->data);
+        printf("  Сгенерирована: %ls\n", substr->data);
     }
     else
         string_from_cstr(substr, input);
