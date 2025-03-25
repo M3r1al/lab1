@@ -40,8 +40,27 @@ void handle_concat(String *s1, String *s2, String *result)
     // Если строка пустая - генерируем случайную
     if (strlen(input) == 0)
     {
-        generate_random_string(s1, 5, 15); 
-        printf("  Сгенерирована: %ls\n", s1->data);
+        generate_random_string(s1, 5, 15);
+        if (s1->char_size == 1)
+            printf("  Сгенерирована: %s\n", s1->data);
+        else if (s1->char_size == sizeof(wchar_t))
+            printf("  Сгенерирована: %ls\n", s1->data);
+        else
+        {
+            printf("  Сгенерирована: ");
+            const unsigned char *data = s1->data;
+            
+            for (size_t i = 0; i < s1->size * s1->char_size;)
+            {
+                // Выводим все байты текущего символа
+                for (size_t j = 0; j < s1->char_size; j++)
+                    printf("%hhX", data[i + j]);
+                
+                printf(" "); // Разделитель между символами
+                i += s1->char_size;
+            }
+            printf("\n");
+        }
     }
     else
         string_from_cstr(s1, input); // Иначе преобразуем в строку структуры
@@ -73,7 +92,26 @@ void handle_concat(String *s1, String *s2, String *result)
     if (strlen(input) == 0)
     {
         generate_random_string(s2, 5, 15);
-        printf("  Сгенерирована: %ls\n", s2->data);
+        if (s2->char_size == 1)
+            printf("  Сгенерирована: %s\n", s2->data);
+        else if (s2->char_size == sizeof(wchar_t))
+            printf("  Сгенерирована: %ls\n", s2->data);
+        else
+        {
+            printf("  Сгенерирована: ");
+            const unsigned char *data = s2->data;
+            
+            for (size_t i = 0; i < s2->size * s2->char_size;)
+            {
+                // Выводим все байты текущего символа
+                for (size_t j = 0; j < s2->char_size; j++)
+                    printf("%hhX", data[i + j]);
+                
+                printf(" "); // Разделитель между символами
+                i += s2->char_size;
+            }
+            printf("\n");
+        }
     }
     else
         string_from_cstr(s2, input);
@@ -82,7 +120,26 @@ void handle_concat(String *s1, String *s2, String *result)
     
     // Совмещаем строки
     string_concat(s1, s2, result);
-    printf("РЕЗУЛЬТАТ: %ls\n", result->data);
+    if (result->char_size == 1)
+        printf("РЕЗУЛЬТАТ: %s\n", result->data);
+    else if (result->char_size == sizeof(wchar_t))
+        printf("РЕЗУЛЬТАТ: %ls\n", result->data);
+    else
+    {
+        printf("РЕЗУЛЬТАТ: ");
+        const unsigned char *data = result->data;
+        
+        for (size_t i = 0; i < result->size * result->char_size;)
+        {
+            // Выводим все байты текущего символа
+            for (size_t j = 0; j < result->char_size; j++)
+                printf("%hhX", data[i + j]);
+            
+            printf(" "); // Разделитель между символами
+            i += result->char_size;
+        }
+        printf("\n");
+    }
 }
 
 // Функция для обработки выделения подстроки: запрашивает исходную строку (или генерирует её),
@@ -116,7 +173,26 @@ void handle_substring(String *s, String *result)
     if (strlen(input) == 0)
     {
         generate_random_string(s, 5, 15);
-        printf("  Сгенерирована: %ls\n", s->data);
+        if (s->char_size == 1)
+            printf("  Сгенерирована: %s\n", s->data);
+        else if (s->char_size == sizeof(wchar_t))
+            printf("  Сгенерирована: %ls\n", s->data);
+        else
+        {
+            printf("  Сгенерирована: ");
+            const unsigned char *data = s->data;
+            
+            for (size_t i = 0; i < s->size * s->char_size;)
+            {
+                // Выводим все байты текущего символа
+                for (size_t j = 0; j < s->char_size; j++)
+                    printf("%hhX", data[i + j]);
+                
+                printf(" "); // Разделитель между символами
+                i += s->char_size;
+            }
+            printf("\n");
+        }
     }
     else
         string_from_cstr(s, input);
@@ -145,7 +221,26 @@ void handle_substring(String *s, String *result)
     
     // Извлекаем подстроку
     string_substring(s, i, j, result);
-    printf("Подстрока: %ls\n", result->data);
+    if (result->char_size == 1)
+        printf("Подстрока: %s\n", result->data);
+    else if (result->char_size == sizeof(wchar_t))
+        printf("Подстрока: %ls\n", result->data);
+    else
+    {
+        printf("Подстрока: ");
+        const unsigned char *data = result->data;
+        
+        for (size_t i = 0; i < result->size * result->char_size;)
+        {
+            // Выводим все байты текущего символа
+            for (size_t j = 0; j < result->char_size; j++)
+                printf("%hhX", data[i + j]);
+            
+            printf(" "); // Разделитель между символами
+            i += result->char_size;
+        }
+        printf("\n");
+    }
 }
 
 // Функция для поиска подстроки в основной строке с возможностью выбора чувствительности к регистру
@@ -178,7 +273,26 @@ void handle_find(String *s, String *substr)
     if (strlen(input) == 0)
     {
         generate_random_string(s, 5, 15);
-        printf("  Сгенерирована: %ls\n", s->data);
+        if (s->char_size == 1)
+            printf("  Сгенерирована: %s\n", s->data);
+        else if (s->char_size == sizeof(wchar_t))
+            printf("  Сгенерирована: %ls\n", s->data);
+        else
+        {
+            printf("  Сгенерирована: ");
+            const unsigned char *data = s->data;
+            
+            for (size_t i = 0; i < s->size * s->char_size;)
+            {
+                // Выводим все байты текущего символа
+                for (size_t j = 0; j < s->char_size; j++)
+                    printf("%hhX", data[i + j]);
+                
+                printf(" "); // Разделитель между символами
+                i += s->char_size;
+            }
+            printf("\n");
+        }
     }
     else
         string_from_cstr(s, input);
@@ -210,7 +324,26 @@ void handle_find(String *s, String *substr)
     if (strlen(input) == 0)
     {
         generate_random_string(substr, 3, 10);
-        printf("  Сгенерирована: %ls\n", substr->data);
+        if (substr->char_size == 1)
+            printf("  Сгенерирована: %s\n", substr->data);
+        else if (substr->char_size == sizeof(wchar_t))
+            printf("  Сгенерирована: %ls\n", substr->data);
+        else
+        {
+            printf("  Сгенерирована: ");
+            const unsigned char *data = substr->data;
+            
+            for (size_t i = 0; i < substr->size * substr->char_size;)
+            {
+                // Выводим все байты текущего символа
+                for (size_t j = 0; j < substr->char_size; j++)
+                    printf("%hhX", data[i + j]);
+                
+                printf(" "); // Разделитель между символами
+                i += substr->char_size;
+            }
+            printf("\n");
+        }
     }
     else
         string_from_cstr(substr, input);

@@ -6,14 +6,15 @@
 #include <wchar.h>
 
 // Инициализация пустой строки
-Error string_init(String *s) 
+Error string_init(String *s, size_t char_size) 
 {
-    if (!s)
+    if (!s || char_size <= 0)
         return ERROR_INVALID_ARGUMENT;
     
     s->data = NULL;
     s->size = 0;
     s->capacity = 0;
+    s->char_size = char_size;
     return ERROR_SUCCESS;
 }
 
@@ -39,7 +40,7 @@ Error string_reserve(String *s, size_t new_capacity)
     if (new_capacity <= s->capacity)
         return ERROR_SUCCESS;
     
-    wchar_t *new_data = (wchar_t*)realloc(s->data, new_capacity * sizeof(wchar_t));
+    void *new_data = realloc(s->data, new_capacity * s->char_size);
     if (!new_data)
         return ERROR_OUT_OF_MEMORY; // Ошибка выделения памяти
     
@@ -51,7 +52,7 @@ Error string_reserve(String *s, size_t new_capacity)
 // Создание строки из C-строки
 Error string_from_cstr(String *s, const char *cstr) 
 {
-    if (!s)
+    if (!s || !cstr || s->char_size != 1)
         return ERROR_INVALID_ARGUMENT;
     
     // Очистка предыдущего содержимого
@@ -63,8 +64,7 @@ Error string_from_cstr(String *s, const char *cstr)
     if (err != ERROR_SUCCESS)
         return err;
     
-    for (size_t i = 0; i < len; i++)
-        s->data[i] = (wchar_t)cstr[i];
+    memcpy(s->data, cstr, len);
     
     s->size = strlen(cstr);
     return ERROR_SUCCESS;
@@ -85,9 +85,12 @@ Error generate_random_string(String *s, int min_len, int max_len)
     const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     
     for (int i = 0; i < len; i++)
-        s->data[i] = (wchar_t)charset[rand() % (sizeof(charset) - 1)]; // -1 для исключения завершающего нуля
+    {
+        char c = charset[rand() % (sizeof(charset) - 1)]; // -1 для исключения завершающего нуля
+        memcpy((char*)s->data + (i * s->char_size), &c, 1);
+    }
     
-    s->data[len] = L'\0';
+    memset((char*)s->data + (len * s->char_size), 0, s->char_size);
     s->size = len;
     return ERROR_SUCCESS;
 }
@@ -95,7 +98,7 @@ Error generate_random_string(String *s, int min_len, int max_len)
 // Конкатенация строк
 Error string_concat(const String *a, const String *b, String *result) 
 {
-    if (!a || !b)
+    if (!a || !b || a->char_size != b->char_size)
         return ERROR_INVALID_ARGUMENT;
     
     // Очистка предыдущего результата
@@ -108,13 +111,8 @@ Error string_concat(const String *a, const String *b, String *result)
     if (err != ERROR_SUCCESS)
         return err;
     
-    for (size_t i = 0; i < a->size; i++)
-        result->data[i] = a->data[i];
-    
-    for (size_t i = 0; i < b->size; i++)
-        result->data[a->size + i] = b->data[i];
-    
-    result->data[total_size] = L'\0';
+    memcpy(result->data, a->data, a->size * a->char_size);
+    memcpy((char*)result->data + (a->size * a->char_size), b->data, b->size * b->char_size);
     result->size = total_size;
     return ERROR_SUCCESS;
 }
@@ -126,8 +124,8 @@ Error string_substring(const String *s, int i, int j, String *result)
         return ERROR_INVALID_ARGUMENT;
     
     // Обработка границ индексов
-    if (wcslen(s->data) < j || i < 0)
-        return ERROR_INDEX_OUT_OF_RANGE;
+    if ((int)s->size <= j || i < 0)
+        return ERROR_INDEX_OUT_OF_RANGE; // Или все же лучше тоже как неверный аргумент?
     
     Error err = string_free(result);
     if (err != ERROR_SUCCESS)
@@ -139,9 +137,13 @@ Error string_substring(const String *s, int i, int j, String *result)
         return err;
     
     for (size_t k = 0; k < substring_size; k++)
-        result->data[k] = s->data[i + k];
+    {
+        size_t src_offset = (i + k) * s->char_size;
+        size_t dst_offset = k * result->char_size;
+        memcpy((char*)result->data + dst_offset, (char*)s->data + src_offset, s->char_size);
+    }
         
-    result->data[substring_size] = L'\0';
+    memset((char*)result->data + substring_size * result->char_size, 0, result->char_size);
     result->size = substring_size;
     return ERROR_SUCCESS;
 }
@@ -149,7 +151,7 @@ Error string_substring(const String *s, int i, int j, String *result)
 // Поиск подстроки с учетом регистра
 Error string_find(const String *s, const String *substr, int *result, int case_sensitive) 
 {
-    if (!s || !substr || !result)
+    if (!s || !substr || !result || s->char_size != substr->char_size)
         return ERROR_INVALID_ARGUMENT;
     
     // Инициализация результата
@@ -166,17 +168,27 @@ Error string_find(const String *s, const String *substr, int *result, int case_s
         // Сравнение символов
         for (size_t j = 0; j < substr->size; j++)
         { 
-            wchar_t a = s->data[i + j];
-            wchar_t b = substr->data[j];
+            size_t s_offset = (i + j) * s->char_size;
+            size_t substr_offset = j * substr->char_size;
+
+            // Временные копии для преобразования регистра
+            void *a = malloc(s->char_size);
+            void *b = malloc(substr->char_size);
+            memcpy(a, (char*)s->data + s_offset, s->char_size);
+            memcpy(b, (char*)substr->data + substr_offset, substr->char_size);
 
             // Преобразование к нижнему регистру
             if (!case_sensitive)
             { 
-                a = towlower(a);
-                b = towlower(b);
+                // char
+                if (s->char_size == 1)
+                {
+                    *(char*)a = towlower(*(char*)a);
+                    *(char*)b = towlower(*(char*)b);
+                }
             }
             
-            if (a != b)
+            if (memcmp(a, b, s->char_size) != 0)
             {
                 found = 0;
                 break;
@@ -191,39 +203,53 @@ Error string_find(const String *s, const String *substr, int *result, int case_s
     return ERROR_INDEX_OUT_OF_RANGE;
 }
 
-Error string_get_symbol(const String *s, size_t index, wchar_t *symbol)
+Error string_get_symbol(const String *s, size_t index, void *symbol)
 {
     if (!s || !symbol)
         return ERROR_INVALID_ARGUMENT;
     if (index >= s->size)
-        return ERROR_INDEX_OUT_OF_RANGE;
+        return ERROR_INDEX_OUT_OF_RANGE; // Такой же вопрос про тип ошибки
     
-    *symbol = s->data[index];
+    memcpy(symbol, (char*)s->data + (index * s->char_size), s->char_size);
     return ERROR_SUCCESS;
 }
 
-Error string_set_symbol(String *s, size_t index, wchar_t symbol)
+Error string_set_symbol(String *s, size_t index, const void *symbol)
 {
-    if (!s)
+    if (!s || !symbol)
         return ERROR_INVALID_ARGUMENT;
     if (index >= s->size)
-        return ERROR_INDEX_OUT_OF_RANGE;
+        return ERROR_INDEX_OUT_OF_RANGE; // Аналогично, это к аргументу или ошибке с индексом относится?
     
-    s->data[index] = symbol;
+    memcpy((char*)s->data + (index * s->char_size), symbol, s->char_size);
     return ERROR_SUCCESS;
 }
 
-Error string_append_symbol(String *s, wchar_t symbol)
+Error string_append_symbol(String *s, const void *symbol)
 {
-    if (!s)
+    if (!s || !symbol)
         return ERROR_INVALID_ARGUMENT;
     
-    Error err = string_reserve(s, s->capacity * 2 + 1);
-    if (err != ERROR_SUCCESS)
-        return err;
+    if (s->capacity < s->size + 1)
+    {
+        Error err = string_reserve(s, s->capacity * 2);
+        if (err != ERROR_SUCCESS)
+            return err;
+    }
     
-    s->data[s->size] = symbol;
+    memcpy((char*)s->data + s->size * s->char_size, symbol, s->char_size);
     s->size++;
-    s->data[s->size] = L'\0';
+    return ERROR_SUCCESS;
+}
+
+Error string_equal(String *s1, String *s2, int *result)
+{
+    if (!s1 || !s2 || s1->char_size != s2->char_size)
+    {
+        *result = 0;
+        return ERROR_INVALID_ARGUMENT;
+    }
+    
+    *result = memcmp(s1->data, s2->data, s1->size * s1->char_size) == 0;
     return ERROR_SUCCESS;
 }
