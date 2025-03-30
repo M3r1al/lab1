@@ -3,12 +3,22 @@
 
 #include <stddef.h>
 
+typedef struct TypeInfo
+{
+    size_t char_size; // количество байт в символе
+    
+    // Функции для работы с данными
+    void (*char_to_symbol)(const struct TypeInfo*, void*, char);
+    int (*compare)(const void*, const void*);
+    void (*copy)(void*, const void*);
+} TypeInfo;
+
 typedef struct 
 {
     void *data; // универсальный указатель
     size_t size;
     size_t capacity;
-    size_t char_size; // количество байт в символе
+    const TypeInfo *type; // Информация о типе данных
 } String;
 
 typedef enum
@@ -19,7 +29,11 @@ typedef enum
     ERROR_INDEX_OUT_OF_RANGE
 } Error;
 
-Error string_init(String *s, size_t char_size);
+void string_read(String *s);
+void string_print(const char *message, String *s);
+void copy_char(void *dest, const void *src);
+void char_to_symbol(const TypeInfo *type, void *symbol, char c);
+Error string_init(String *s, TypeInfo *char_size);
 Error string_free(String *s);
 Error string_reserve(String *s, size_t new_capacity);
 Error string_from_cstr(String *s, const char *cstr);

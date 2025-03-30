@@ -68,14 +68,19 @@ void test_concat(char *a_cstr, char *b_cstr, char *result_cstr)
 {
     Error err;
     String a, b, result, a_copy, b_copy;
-    err = string_init(&a, 1);
+    TypeInfo type;
+    type.char_size = 1;
+    type.char_to_symbol = char_to_symbol;
+    type.copy = copy_char;
+
+    err = string_init(&a, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
         return;
     }
     
-    err = string_init(&b, 1);
+    err = string_init(&b, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
@@ -83,21 +88,21 @@ void test_concat(char *a_cstr, char *b_cstr, char *result_cstr)
     }
     
     // Копии
-    err = string_init(&a_copy, 1);
+    err = string_init(&a_copy, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
         return;
     }
     
-    err = string_init(&b_copy, 1);
+    err = string_init(&b_copy, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
         return;
     }
     
-    err = string_init(&result, 1);
+    err = string_init(&result, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
@@ -199,14 +204,19 @@ void test_substring(char *a_cstr, int i, int j, char *result_cstr)
 {
     Error err;
     String a, result, a_copy;
-    err = string_init(&a, 1);
+    TypeInfo type;
+    type.char_size = 1;
+    type.char_to_symbol = char_to_symbol;
+    type.copy = copy_char;
+    
+    err = string_init(&a, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
         return;
     }
 
-    err = string_init(&result, 1);
+    err = string_init(&result, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
@@ -214,7 +224,7 @@ void test_substring(char *a_cstr, int i, int j, char *result_cstr)
     }
 
     // Копия
-    err = string_init(&a_copy, 1);
+    err = string_init(&a_copy, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
@@ -292,14 +302,19 @@ void test_find(char *a_cstr, char *sub_cstr, int case_sensitive, int result, cha
     Error err;
     String a, substr, a_copy, sub_copy;
     int index;
-    err = string_init(&a, 1);
+    TypeInfo type;
+    type.char_size = 1;
+    type.char_to_symbol = char_to_symbol;
+    type.copy = copy_char;
+    
+    err = string_init(&a, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
         return;
     }
 
-    err = string_init(&substr, 1);
+    err = string_init(&substr, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
@@ -307,14 +322,14 @@ void test_find(char *a_cstr, char *sub_cstr, int case_sensitive, int result, cha
     }
 
     // Копии
-    err = string_init(&a_copy, 1);
+    err = string_init(&a_copy, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));
         return;
     }
 
-    err = string_init(&sub_copy, 1);
+    err = string_init(&sub_copy, &type);
     if (err != ERROR_SUCCESS)
     {
         TEST_CHECK(0, cstr_error(err));

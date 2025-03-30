@@ -5,16 +5,117 @@
 #include <ctype.h>
 #include <wchar.h>
 
-// Инициализация пустой строки
-Error string_init(String *s, size_t char_size) 
+void string_read(String *s)
 {
-    if (!s || char_size <= 0)
+    // Получаем TypeInfo из структуры String
+    const TypeInfo *type = s->type;
+    size_t char_size = type->char_size;
+    void *input = NULL;
+    size_t capacity = 0, size = 0;
+    
+    int ch;
+    size = 0;
+
+    // Считываем символы до конца строки или EOF
+    while ((ch = getchar()) != '\n' && ch != EOF) 
+    {
+        // Если буфер переполнен, увеличиваем его размер
+        if (size >= capacity)
+        {
+            capacity = capacity ? capacity * 2 : 16;
+            input = realloc(input, capacity * char_size);
+        }
+        // Преобразуем char в символ типа TypeInfo
+        size_t offset = size * char_size;
+        type->char_to_symbol(type, (char*)input + offset, (char)ch);
+        size++;
+    }
+
+    // Если ввод был прерван без ввода данных
+    if (ch == EOF && size == 0) 
+    {
+        free(input);
+        return;
+    }
+
+    // Добавляем нулевой символ для завершения строки
+    input = realloc(input, (size + 1) * char_size); // Учтено char_size
+    size_t null_offset = size * char_size;
+    type->char_to_symbol(type, (char*)input + null_offset, '\0'); // Учтено '\0'
+
+    // Если строка пустая - генерируем случайную
+    if (size == 0) 
+    {
+        generate_random_string(s, 5, 15);
+        string_print("  Сгенерирована: ", s);
+    }
+    else 
+    {
+        // Инициализируем строку, используя TypeInfo
+        s->size = size;
+        s->capacity = capacity; // Или выделяем больше, если нужно
+        s->data = malloc(size * char_size); // Выделяем память под символы
+
+        // Копируем данные из временного буфера input в s->data
+        for (size_t i = 0; i < size; i++) 
+        {
+            size_t src_offset = i * char_size;
+            size_t dst_offset = i * char_size;
+            type->copy((char*)s->data + dst_offset, (char*)input + src_offset);
+        }
+    }
+
+    free(input); // Освобождаем временный буфер
+}
+
+void string_print(const char *message, String *s)
+{
+    if (s->type->char_size == 1)
+        printf("%s%s\n", message, s->data);
+    else if (s->type->char_size == sizeof(wchar_t))
+        printf("%s%ls\n", message, s->data);
+    else
+    {
+        printf("%s",message);
+        const unsigned char *data = s->data;
+        
+        for (size_t i = 0; i < s->size * s->type->char_size;)
+        {
+            // Выводим все байты текущего символа
+            for (size_t j = 0; j < s->type->char_size; j++)
+                printf("%hhX", data[i + j]);
+            
+            printf(" "); // Разделитель между символами
+            i += s->type->char_size;
+        }
+        printf("\n");
+    }
+}
+
+void copy_char(void *dest, const void *src)
+{
+    *(char*)dest = *(const char*)src;
+}
+
+void char_to_symbol(const TypeInfo *type, void *symbol, char c)
+{
+    // заполняем символ нулями
+    memset(symbol, 0, type->char_size);
+    
+    // Копируем исходный char в первый байт
+    *(char*)symbol = c;
+}
+
+// Инициализация пустой строки
+Error string_init(String *s, TypeInfo *type) 
+{
+    if (!s || !type)
         return ERROR_INVALID_ARGUMENT;
     
     s->data = NULL;
     s->size = 0;
     s->capacity = 0;
-    s->char_size = char_size;
+    s->type = type;
     return ERROR_SUCCESS;
 }
 
@@ -40,7 +141,7 @@ Error string_reserve(String *s, size_t new_capacity)
     if (new_capacity <= s->capacity)
         return ERROR_SUCCESS;
     
-    void *new_data = realloc(s->data, new_capacity * s->char_size);
+    void *new_data = realloc(s->data, new_capacity * s->type->char_size);
     if (!new_data)
         return ERROR_OUT_OF_MEMORY; // Ошибка выделения памяти
     
@@ -52,7 +153,7 @@ Error string_reserve(String *s, size_t new_capacity)
 // Создание строки из C-строки
 Error string_from_cstr(String *s, const char *cstr) 
 {
-    if (!s || !cstr || s->char_size != 1)
+    if (!s || !cstr || s->type->char_size != 1)
         return ERROR_INVALID_ARGUMENT;
     
     // Очистка предыдущего содержимого
@@ -87,10 +188,10 @@ Error generate_random_string(String *s, int min_len, int max_len)
     for (int i = 0; i < len; i++)
     {
         char c = charset[rand() % (sizeof(charset) - 1)]; // -1 для исключения завершающего нуля
-        memcpy((char*)s->data + (i * s->char_size), &c, 1);
+        memcpy((char*)s->data + (i * s->type->char_size), &c, 1);
     }
     
-    memset((char*)s->data + (len * s->char_size), 0, s->char_size);
+    memset((char*)s->data + (len * s->type->char_size), 0, s->type->char_size);
     s->size = len;
     return ERROR_SUCCESS;
 }
@@ -98,7 +199,7 @@ Error generate_random_string(String *s, int min_len, int max_len)
 // Конкатенация строк
 Error string_concat(const String *a, const String *b, String *result) 
 {
-    if (!a || !b || a->char_size != b->char_size)
+    if (!a || !b || a->type->char_size != b->type->char_size || b->type->char_size != result->type->char_size)
         return ERROR_INVALID_ARGUMENT;
     
     // Очистка предыдущего результата
@@ -111,8 +212,8 @@ Error string_concat(const String *a, const String *b, String *result)
     if (err != ERROR_SUCCESS)
         return err;
     
-    memcpy(result->data, a->data, a->size * a->char_size);
-    memcpy((char*)result->data + (a->size * a->char_size), b->data, b->size * b->char_size);
+    memcpy(result->data, a->data, a->size * a->type->char_size);
+    memcpy((char*)result->data + (a->size * a->type->char_size), b->data, b->size * b->type->char_size);
     result->size = total_size;
     return ERROR_SUCCESS;
 }
@@ -120,7 +221,7 @@ Error string_concat(const String *a, const String *b, String *result)
 // Получение подстроки
 Error string_substring(const String *s, int i, int j, String *result) 
 {
-    if (!s || i > j)
+    if (!s || i > j || s->type->char_size != result->type->char_size)
         return ERROR_INVALID_ARGUMENT;
     
     // Обработка границ индексов
@@ -138,12 +239,12 @@ Error string_substring(const String *s, int i, int j, String *result)
     
     for (size_t k = 0; k < substring_size; k++)
     {
-        size_t src_offset = (i + k) * s->char_size;
-        size_t dst_offset = k * result->char_size;
-        memcpy((char*)result->data + dst_offset, (char*)s->data + src_offset, s->char_size);
+        size_t src_offset = (i + k) * s->type->char_size;
+        size_t dst_offset = k * result->type->char_size;
+        memcpy((char*)result->data + dst_offset, (char*)s->data + src_offset, s->type->char_size);
     }
         
-    memset((char*)result->data + substring_size * result->char_size, 0, result->char_size);
+    memset((char*)result->data + substring_size * result->type->char_size, 0, result->type->char_size);
     result->size = substring_size;
     return ERROR_SUCCESS;
 }
@@ -151,7 +252,7 @@ Error string_substring(const String *s, int i, int j, String *result)
 // Поиск подстроки с учетом регистра
 Error string_find(const String *s, const String *substr, int *result, int case_sensitive) 
 {
-    if (!s || !substr || !result || s->char_size != substr->char_size)
+    if (!s || !substr || !result || s->type->char_size != substr->type->char_size)
         return ERROR_INVALID_ARGUMENT;
     
     // Инициализация результата
@@ -168,27 +269,33 @@ Error string_find(const String *s, const String *substr, int *result, int case_s
         // Сравнение символов
         for (size_t j = 0; j < substr->size; j++)
         { 
-            size_t s_offset = (i + j) * s->char_size;
-            size_t substr_offset = j * substr->char_size;
+            size_t s_offset = (i + j) * s->type->char_size;
+            size_t substr_offset = j * substr->type->char_size;
 
             // Временные копии для преобразования регистра
-            void *a = malloc(s->char_size);
-            void *b = malloc(substr->char_size);
-            memcpy(a, (char*)s->data + s_offset, s->char_size);
-            memcpy(b, (char*)substr->data + substr_offset, substr->char_size);
+            void *a = malloc(s->type->char_size);
+            void *b = malloc(substr->type->char_size);
+            memcpy(a, (char*)s->data + s_offset, s->type->char_size);
+            memcpy(b, (char*)substr->data + substr_offset, substr->type->char_size);
 
             // Преобразование к нижнему регистру
             if (!case_sensitive)
             { 
                 // char
-                if (s->char_size == 1)
+                if (s->type->char_size == 1)
                 {
                     *(char*)a = towlower(*(char*)a);
                     *(char*)b = towlower(*(char*)b);
                 }
+                // wchar_t
+                if (s->type->char_size == sizeof(wchar_t))
+                {
+                    *(wchar_t*)a = towlower(*(wchar_t*)a);
+                    *(wchar_t*)b = towlower(*(wchar_t*)b);
+                }
             }
             
-            if (memcmp(a, b, s->char_size) != 0)
+            if (memcmp(a, b, s->type->char_size) != 0)
             {
                 found = 0;
                 break;
@@ -210,7 +317,7 @@ Error string_get_symbol(const String *s, size_t index, void *symbol)
     if (index >= s->size)
         return ERROR_INDEX_OUT_OF_RANGE; // Такой же вопрос про тип ошибки
     
-    memcpy(symbol, (char*)s->data + (index * s->char_size), s->char_size);
+    memcpy(symbol, (char*)s->data + (index * s->type->char_size), s->type->char_size);
     return ERROR_SUCCESS;
 }
 
@@ -221,7 +328,7 @@ Error string_set_symbol(String *s, size_t index, const void *symbol)
     if (index >= s->size)
         return ERROR_INDEX_OUT_OF_RANGE; // Аналогично, это к аргументу или ошибке с индексом относится?
     
-    memcpy((char*)s->data + (index * s->char_size), symbol, s->char_size);
+    memcpy((char*)s->data + (index * s->type->char_size), symbol, s->type->char_size);
     return ERROR_SUCCESS;
 }
 
@@ -237,19 +344,19 @@ Error string_append_symbol(String *s, const void *symbol)
             return err;
     }
     
-    memcpy((char*)s->data + s->size * s->char_size, symbol, s->char_size);
+    memcpy((char*)s->data + s->size * s->type->char_size, symbol, s->type->char_size);
     s->size++;
     return ERROR_SUCCESS;
 }
 
 Error string_equal(String *s1, String *s2, int *result)
 {
-    if (!s1 || !s2 || s1->char_size != s2->char_size)
+    if (!s1 || !s2 || s1->type->char_size != s2->type->char_size || s1->size != s2->size)
     {
         *result = 0;
         return ERROR_INVALID_ARGUMENT;
     }
     
-    *result = memcmp(s1->data, s2->data, s1->size * s1->char_size) == 0;
+    *result = memcmp(s1->data, s2->data, s1->size * s1->type->char_size) == 0;
     return ERROR_SUCCESS;
 }
