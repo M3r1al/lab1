@@ -18,8 +18,11 @@ void handle_concat(String *s1, String *s2, String *result)
     string_read(s2);
     
     // Совмещаем строки
-    string_concat(s1, s2, result);
-    string_print("Результат: ", result);
+    Error err = string_concat(s1, s2, result);
+    if (err == ERROR_SUCCESS)
+        string_print("Результат: ", result);
+    else
+        printf("Ошибка: %s\n", cstr_error(err));
 }
 
 // Функция для обработки выделения подстроки: запрашивает исходную строку (или генерирует её),
@@ -51,8 +54,11 @@ void handle_substring(String *s, String *result)
     while (getchar() != '\n'); // Удаление остатков ввода
     
     // Извлекаем подстроку
-    string_substring(s, i, j, result);
-    string_print("Подстрока: ", result);
+    Error err = string_substring(s, i, j, result);
+    if (err == ERROR_SUCCESS)
+        string_print("Подстрока: ", result);
+    else
+        printf("Ошибка: %s\n", cstr_error(err));
 }
 
 // Функция для поиска подстроки в основной строке с возможностью выбора чувствительности к регистру
@@ -80,8 +86,10 @@ void handle_find(String *s, String *substr)
     
     int index;
     // Выполняем поиск
-    string_find(s, substr, &index, case_sensitive); 
-    if (index != -1)
+    Error err = string_find(s, substr, &index, case_sensitive); 
+    if (err != ERROR_SUCCESS)
+        printf("Ошибка: %s\n", cstr_error(err));
+    else if (index != -1)
         printf("Найдено на позиции: %d\n", index);
     else
         printf("Не найдено\n");

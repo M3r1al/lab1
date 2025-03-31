@@ -5,6 +5,23 @@
 #include <ctype.h>
 #include <wchar.h>
 
+char* cstr_error(Error err)
+{
+    switch (err)
+    {
+        case ERROR_SUCCESS:
+            return "Нет ошибок";
+        case ERROR_INVALID_ARGUMENT:
+            return "Неверные аргументы";
+        case ERROR_OUT_OF_MEMORY:
+            return "Недостаточно памяти";
+        case ERROR_INDEX_OUT_OF_RANGE:
+            return "Индекс выходит за границы";
+        default:
+            return "Неизвестная ошибка";
+    }
+}
+
 void string_read(String *s)
 {
     // Получаем TypeInfo из структуры String
@@ -27,7 +44,7 @@ void string_read(String *s)
         }
         // Преобразуем char в символ типа TypeInfo
         size_t offset = size * char_size;
-        type->char_to_symbol(type, (char*)input + offset, (char)ch);
+        type->char_to_symbol(type, (char*)input + offset, (void*)&ch);
         size++;
     }
 
@@ -41,7 +58,8 @@ void string_read(String *s)
     // Добавляем нулевой символ для завершения строки
     input = realloc(input, (size + 1) * char_size); // Учтено char_size
     size_t null_offset = size * char_size;
-    type->char_to_symbol(type, (char*)input + null_offset, '\0'); // Учтено '\0'
+    char c = '\0';
+    type->char_to_symbol(type, (char*)input + null_offset, (void*)&c); // Учтено '\0'
 
     // Если строка пустая - генерируем случайную
     if (size == 0) 
@@ -92,20 +110,6 @@ void string_print(const char *message, String *s)
     }
 }
 
-void copy_char(void *dest, const void *src)
-{
-    *(char*)dest = *(const char*)src;
-}
-
-void char_to_symbol(const TypeInfo *type, void *symbol, char c)
-{
-    // заполняем символ нулями
-    memset(symbol, 0, type->char_size);
-    
-    // Копируем исходный char в первый байт
-    *(char*)symbol = c;
-}
-
 // Инициализация пустой строки
 Error string_init(String *s, TypeInfo *type) 
 {
@@ -133,9 +137,9 @@ Error string_free(String *s)
 }
 
 // Изменение ёмкости строки
-Error string_reserve(String *s, size_t new_capacity) 
+Error string_reserve(String *s, int new_capacity) 
 {
-    if (!s)
+    if (!s || new_capacity <= 0)
         return ERROR_INVALID_ARGUMENT;
     
     if (new_capacity <= s->capacity)
@@ -310,22 +314,22 @@ Error string_find(const String *s, const String *substr, int *result, int case_s
     return ERROR_INDEX_OUT_OF_RANGE;
 }
 
-Error string_get_symbol(const String *s, size_t index, void *symbol)
+Error string_get_symbol(const String *s, int index, void *symbol)
 {
     if (!s || !symbol)
         return ERROR_INVALID_ARGUMENT;
-    if (index >= s->size)
+    if (index >= s->size || index < 0)
         return ERROR_INDEX_OUT_OF_RANGE; // Такой же вопрос про тип ошибки
     
     memcpy(symbol, (char*)s->data + (index * s->type->char_size), s->type->char_size);
     return ERROR_SUCCESS;
 }
 
-Error string_set_symbol(String *s, size_t index, const void *symbol)
+Error string_set_symbol(String *s, int index, const void *symbol)
 {
     if (!s || !symbol)
         return ERROR_INVALID_ARGUMENT;
-    if (index >= s->size)
+    if (index >= s->size || index < 0)
         return ERROR_INDEX_OUT_OF_RANGE; // Аналогично, это к аргументу или ошибке с индексом относится?
     
     memcpy((char*)s->data + (index * s->type->char_size), symbol, s->type->char_size);
@@ -351,7 +355,7 @@ Error string_append_symbol(String *s, const void *symbol)
 
 Error string_equal(String *s1, String *s2, int *result)
 {
-    if (!s1 || !s2 || s1->type->char_size != s2->type->char_size || s1->size != s2->size)
+    if (!s1 || !s2 || s1->type != s2->type)
     {
         *result = 0;
         return ERROR_INVALID_ARGUMENT;

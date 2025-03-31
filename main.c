@@ -76,13 +76,11 @@ int main()
     
     // Инициализация структур для хранения строк
     String s1, s2, result;
-    TypeInfo type;
-    type.char_size = char_size;
-    type.char_to_symbol = char_to_symbol;
-    type.copy = copy_char;
-    string_init(&s1, &type);
-    string_init(&s2, &type);
-    string_init(&result, &type);
+    TypeInfo* type = create_char_type_info();
+    type->char_size = char_size;
+    string_init(&s1, type);
+    string_init(&s2, type);
+    string_init(&result, type);
     
     while (1)
     {
